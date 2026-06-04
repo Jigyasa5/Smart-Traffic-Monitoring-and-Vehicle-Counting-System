@@ -77,7 +77,7 @@ Press **Q** to quit the application.
 
 ---
 
-## 🔍 Working Flow
+## Working Flow
 
 1. Read traffic video frame by frame.
 2. Apply Background Subtraction (MOG2).
