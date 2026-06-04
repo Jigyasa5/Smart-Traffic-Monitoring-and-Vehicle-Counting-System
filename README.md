@@ -34,6 +34,7 @@ Smart-Traffic-Monitoring-and-Vehicle-Counting-System/
 │
 ├── Output/
 │   └── processed_video.mp4
+|   └── report.json
 │
 ├── src/
 │   ├── main.py
