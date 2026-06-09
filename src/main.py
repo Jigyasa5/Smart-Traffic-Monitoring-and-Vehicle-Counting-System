@@ -6,45 +6,38 @@ from detector import VehicleDetector
 from counter import VehicleCounter
 from utils import save_report
 
+
+cap = cv2.VideoCapture("Input/traffic.mp4")
+
 os.makedirs("output", exist_ok=True)
 
-# Input video path
-video_path = "Input/traffic.mp4"
 
-cap = cv2.VideoCapture(video_path)
 
-# Check if video opened successfully
-if not cap.isOpened():
-    print("Cannot open video")
-    exit()
-
+# Video properties
 fps = cap.get(cv2.CAP_PROP_FPS)
-if fps == 0 or fps is None:
-    fps = 25
-
-# Get video frame width and height
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+print("FPS:", fps)
+print("Width:", width)
+print("Height:", height)
+print("Total Frames:", total_frames)
+
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 
 out = cv2.VideoWriter(
-    "Output/processed_video.mp4",
-    cv2.VideoWriter_fourcc(*'mp4v'),
+    "output/output_video.mp4",
+    fourcc,
     fps,
-    (width, height)
+    (800, 600)
 )
-
 detector = VehicleDetector()
-
-# Define counting line position 
-line_y = int(height * 0.65)
-
-counter = VehicleCounter(line_y)
-
-total_detected = 0
+counter = VehicleCounter()
 
 start_time = time.time()
 
-# Process video frame by frame
+# Frame Extraction
 while True:
 
     ret, frame = cap.read()
@@ -52,43 +45,17 @@ while True:
     if not ret:
         break
 
-    boxes = detector.detect(frame)
+    frame = cv2.resize(frame, (800, 600))
 
-    total_detected += len(boxes)
+    contours = detector.detect(frame)
 
-    for (x, y, w, h) in boxes:
-        # Draw green bounding box around vehicle
-        pad = 10
+    # Draw Counting Line
+    cv2.line(frame, (120, 460),(620, 420),(0, 0, 255),3)
 
-        x1 = max(0, x - pad)
-        y1 = max(0, y - pad)
-
-        x2 = min(width, x + w + pad)
-        y2 = min(height, y + h + pad)
-        cv2.rectangle(
-            frame,
-            (x, y),
-            (x + w, y + h),
-            (0, 255, 0),
-            2
-        )
-
-        # Calculate center point of bounding box
-        cx = x + w // 2
-        cy = y + h 
-
-        cv2.circle(
-            frame,
-            (cx, cy),
-            4,
-            (0, 0, 255),
-            -1
-        )
-
-        counter.count_vehicle(cx, cy)
-
-    # Draw counting line on frame
-    counter.draw_line(frame, width)
+    frame = counter.process_contours(
+        frame,
+        contours
+    )
 
     cv2.putText(
         frame,
@@ -96,28 +63,32 @@ while True:
         (20, 50),
         cv2.FONT_HERSHEY_SIMPLEX,
         1,
-        (0, 0, 255),
+        (0, 255, 255),
         2
     )
 
-    out.write(frame)
-
-    cv2.imshow("Traffic Monitoring", frame)
+    cv2.imshow("Traffic Video", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-processing_time = time.time() - start_time
-
-report = save_report(
-    "traffic.mp4",
-    total_detected,
-    counter.vehicle_count,
-    processing_time
-)
-
-print(report)
 
 cap.release()
 out.release()
 cv2.destroyAllWindows()
+
+processing_time = round(
+    time.time() - start_time,
+    2
+)
+
+print("Total Vehicles Counted:",
+      counter.vehicle_count)
+
+
+save_report(
+    total_frames,
+    counter.total_detected,
+    counter.vehicle_count,
+    processing_time
+)

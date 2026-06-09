@@ -1,20 +1,25 @@
 import json
+import os
+
 
 def save_report(
-    video_name,
+    total_frames,
     total_detected,
-    total_counted,
+    vehicle_count,
     processing_time
 ):
 
     report = {
-        "video_name": video_name,
+        "video_name": "traffic.mp4",
+        "total_frames": total_frames,
         "total_vehicles_detected": total_detected,
-        "total_vehicles_counted": total_counted,
-        "processing_time_seconds": round(processing_time, 2)
+        "total_vehicles_counted": vehicle_count,
+        "processing_time_seconds": processing_time
     }
 
-    with open("output/report.json", "w") as f:
-        json.dump(report, f, indent=4)
+    os.makedirs("output", exist_ok=True)
 
-    return report
+    with open("output/report.json", "w") as file:
+        json.dump(report, file, indent=4)
+
+    print("Report saved successfully!")

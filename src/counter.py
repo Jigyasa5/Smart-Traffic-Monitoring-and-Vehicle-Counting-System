@@ -1,41 +1,70 @@
 import cv2
 
+
 class VehicleCounter:
 
-    def __init__(self, line_y):
-
-        self.line_y = line_y
-        self.offset = 15
+    def __init__(self):
 
         self.vehicle_count = 0
+        self.total_detected = 0
+        self.false_positive_count = 0
 
-        # Store already counted vehicle centers
-        self.counted_centers = []
+        self.line_y = 300
+        self.offset = 10
 
-    def count_vehicle(self, cx, cy):
+        self.detected_centers = []
 
-        if self.line_y - self.offset <= cy <= self.line_y + self.offset:
+    def process_contours(self, frame, contours):
 
-            for px, py in self.counted_centers:
+        for contour in contours:
 
-                distance = ((cx - px) ** 2 + (cy - py) ** 2) ** 0.5
+            area = cv2.contourArea(contour)
 
-                if distance < 50:
-                    return
+            if area < 1500:
+                self.false_positive_count += 1
+                continue
 
-            self.vehicle_count += 1
-            self.counted_centers.append((cx, cy))
+            x, y, w, h = cv2.boundingRect(contour)
 
-            # Prevent list from growing forever
-            if len(self.counted_centers) > 500:
-                self.counted_centers.pop(0)
+            aspect_ratio = w / h
 
-    def draw_line(self, frame, width):
+            if aspect_ratio < 0.6 or aspect_ratio > 3.5:
+                self.false_positive_count += 1
+                continue
 
-        cv2.line(
-            frame,
-            (0, self.line_y),
-            (width, self.line_y),
-            (255, 0, 0),
-            3
-        )
+            box_area = w * h
+            fill_ratio = area / box_area
+
+            if fill_ratio < 0.4:
+                self.false_positive_count += 1
+                continue
+
+            self.total_detected += 1
+
+            cv2.rectangle(
+                frame,
+                (x, y),
+                (x + w, y + h),
+                (0, 255, 0),
+                2
+            )
+
+            cx = x + w // 2
+            cy = y + h // 2
+
+            cv2.circle(
+                frame,
+                (cx, cy),
+                4,
+                (255, 0, 0),
+                -1
+            )
+
+            if abs(cy - self.line_y) < self.offset:
+
+                if (cx, cy) not in self.detected_centers:
+
+                    self.detected_centers.append((cx, cy))
+                    self.vehicle_count += 1
+
+        return frame
